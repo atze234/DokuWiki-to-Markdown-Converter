@@ -34,7 +34,8 @@ class MarkdownCleanup {
 		foreach($lines as $i => $line) {
 			// TODO Don't convert HTML in headlines
 			if(!preg_match('/^\t/', $line)) {
-				$lines[$i] = preg_replace('/[\*\'`]*(<[^>]*?>)[\*\'`]*/', '`$1`', $lines[$i]);
+				#war '`$1`' im replace
+				$lines[$i] = preg_replace('/[\*\'`]*(<[^>]*?>)[\*\'`]*/', '$1', $lines[$i]);
 			}
 			
 			$out[] = $lines[$i];

@@ -43,8 +43,24 @@ class DocuwikiToMarkdownExtra {
 		'/\[\[(.*)\]\]/U'			=>	array("call" => "handleLink"),
 
 		// Inline code.
-		'/\<code\>(.*)\<\/code\>/U'	=>	array("rewrite" => '`\1`'),
-		'/\<code (.*)\>(.*)\<\/code\>/U'	=>	array("rewrite" => '`\2`{\1}'),
+#		'/\<code\>(.*)\<\/code\>/U'	=>	array("rewrite" => '`\1`'),
+#		'/\<code\>(.*)\<\/code\>/U'     =>      array("rewrite" => '```\1```'),
+		'/\<code\>/U'     =>      array("rewrite" => "\n```\n"),
+                '/\<\/code\>/U'     =>      array("rewrite" => "\n```\n"),
+		'/\<code (.*)( .*)*\>/U'        =>      array("rewrite" => "\n".'```\1'."\n".'#\2'),
+
+                '/\<file\>/U'     =>      array("rewrite" => "\n```\n"),
+                '/\<\/file\>/U'     =>      array("rewrite" => "\n```\n"),
+                '/\<file (.*)\>/U'        =>      array("rewrite" => "\n".'```'."\n".'file: \1'."\n"),
+
+                '/\<hidden\>/U'     =>      array("rewrite" => "\n<details><summary>hidden</summary>\n"),
+                '/\<\/hidden\>/U'     =>      array("rewrite" => "\n</details>\n"),
+                '/\<hidden (.*)\>/U'        =>      array("rewrite" => "\n".'<details><summary>\1</summary>'."\n"),
+
+
+#		'/\<code (.*)\>(.*)\<\/code\>/U'	=>	array("rewrite" => '`\2`{\1}'),
+#                '/\<code (.*)\>(.*)\<\/code\>/U'        =>      array("rewrite" => '```\2```'),
+
 
 		// Misc checks
 		'/^\d*\.\s/'				=>	array("notice" => "Possible numbered list item that is not docuwiki format, not handled"),
@@ -90,7 +106,8 @@ class DocuwikiToMarkdownExtra {
 
 			// Determine if the line mode is changing
 			$tl = trim($line);
-			if ($lineMode != "code" && preg_match('/^\<code(|\s([a-zA-Z0-9])*)\>$/U', $tl)) {
+			/*
+                        if ($lineMode != "code" && preg_match('/^\<code(|\s([a-zA-Z0-9])*)\>$/U', $tl)) {
 				$line = "~~~";
 				if ($tl != "<code>") $line .= " {" . substr($tl, 6, -1) . "}";
 				$lineMode = "code";
@@ -99,7 +116,7 @@ class DocuwikiToMarkdownExtra {
 				$line = "~~~";
 				$lineMode = "text";
 			}
-			else if ($lineMode == "text" && strlen($tl) > 0 &&
+			else */if ($lineMode == "text" && strlen($tl) > 0 &&
 				($tl[0] == "^" || $tl[0] == "|")) {
 				// first char is a ^ so its the start of a table. In table mode we
 				// just accumulate table rows in $table, and render when
@@ -115,7 +132,9 @@ class DocuwikiToMarkdownExtra {
 			if ($prevLineMode == "table" && $lineMode != "table") {
 				$output .= $this->renderTable($table);
 			}
-
+#if ($this->lineNumber>10 && $this->lineNumber <20) {
+#echo $tl."\n";
+#}
 			// perform mode-specific translations
 			switch ($lineMode) {
 				case "text":
@@ -185,16 +204,24 @@ class DocuwikiToMarkdownExtra {
 
 	// Perform inline translations.
 	function convertInlineMarkup($line) {
+#echo "machich";echo $line."\n";
 		// Apply regexp rules
 		foreach (self::$inlineRules as $from => $to) {
 			if (isset($to["rewrite"]))
+                                #if (strpos($line,"file") !== false) {
+                                #echo "machich: ". $line."\n";
+                                #echo "from:". $from." to ". $to["rewrite"]."\n";
 				$line = preg_replace($from, $to["rewrite"], $line);
+                                #echo "zu:"; echo $line."\n";
+                                #}
+                                #else
+                                #$line = preg_replace($from, $to["rewrite"], $line);
 			if (isset($to["notice"]) && preg_match($from, $line))
 				$this->notice($to["notice"]);
 			if (isset($to["call"]) && preg_match_all($from, $line, $matches))
 				$line = call_user_func_array(array($this, $to["call"]), array($line, $matches));
 		}
-
+#echo "zu:"; echo $line."\n";
 		return $line;
 	}
 
@@ -269,10 +296,10 @@ class DocuwikiToMarkdownExtra {
 			$link = substr($match, 2, -2);
 			$parts = explode("|", $link);
 
-			if (count($parts) == 1) $replacement = "[" . $parts[0] . "](" . $this->translateInternalLink($parts[0]) . ")";
+			if (count($parts) == 1) $replacement = "[" . $parts[0] . "](/intern/" . $this->translateInternalLink($parts[0]) . ")";
 			else {
 				if (strpos($parts[1], "{{")) $this->notice("Image inside link not translated, requires manual editing");
-				$replacement = "[" . $parts[1] . "](" . $this->translateInternalLink($parts[0]) . ")";
+				$replacement = "[" . $parts[1] . "](/intern/" . $this->translateInternalLink($parts[0]) . ")";
 			}
 
 			$line = str_replace($match, $replacement, $line);
